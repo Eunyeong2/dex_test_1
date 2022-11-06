@@ -33,22 +33,16 @@ def get_lp_token(addr):
     lp_Amount = json.loads(res)['balance']
     return int(lp_Amount)
 
-def get_amount(src, des):
+def get_token_amount(addr):
     #token amount
-    balance_query_msg = json.dumps({"balance": {"address": src}}).encode()
-    bal = int(
-        json.loads(decode_vec(m.wasm_query(des, balance_query_msg)))["balance"]
-    )
-    nabal1 = json.dumps(
-        {
-            "balance": {
-                "address": src,
-                "denom": "umlg",
-            }
-        }
-    ).encode()
-    bal_umlg = bytearray(m.bank_query(nabal1)).decode()
-    return bal, bal_umlg
+    balance_query_msg = json.dumps({"balance": {"address": addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    return bal1
+
+def get_native_token_amount(addr):
+    msg = json.dumps({"balance": {"address": addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    return bal_umlg
 
 # AddLiquidity test by my token
 def testAddLiquidity1():
@@ -141,17 +135,18 @@ def testWithdrawLiquidity1():
     before_lp_Amount = get_lp_token(my_addr)
     print("Lptoken amount (before withdraw) : {}".format(before_lp_Amount))
 
-    bal, nabal = get_amount(pair_addr, token_addr)
-    print("Before withdraw, PAIR token's amount:{}".format(bal))
-    print("Before withdraw, PAIR native token's amount:{}".format(nabal))
+    bal = get_token_amount(pair_addr)
+    nabal = get_native_token_amount(pair_addr)
+    print("Before withdraw, PAIR's token amount:{}".format(bal))
+    print("Before withdraw, PAIR's native token amount:{}".format(nabal))
 
+    bal = get_token_amount(my_addr)
+    nabal = get_native_token_amount(my_addr)
+    print("Before withdraw, my token amount :{}".format(bal))
+    print("Before withdraw, my native token amount :{}".format(nabal))
+
+    #withdraw token liquidity
     remove = to_binary(json.dumps({"withdraw_liquidity": {}}))
-
-    bal, nabal = get_amount(my_addr, token_addr)
-    print("Before withdraw, native token's amount in my_addr :{}".format(bal))
-    print("Before withdraw, token's amount in my_addr :{}".format(nabal))
-
-    #liquidity
     msg = json.dumps(
         {"send": {"contract": pair_addr, "amount": "1000", "msg": remove}}).encode()
     m.execute(lp_addr, msg, [("umlg", 0)])
@@ -159,12 +154,14 @@ def testWithdrawLiquidity1():
     after_lp_Amount = get_lp_token(my_addr)
     print("Lptoken amount (after withdraw) : {}".format(after_lp_Amount))
     
-    bal, nabal = get_amount(pair_addr, token_addr)
+    bal = get_token_amount(pair_addr)
+    nabal = get_native_token_amount(pair_addr)
     print("After withdraw, PAIR token's amount:{}".format(bal))
     print("After withdraw, PAIR native token's amount:{}".format(nabal))
 
     #query token amount (after)
-    bal, nabal = get_amount(my_addr, token_addr)
+    bal = get_token_amount(my_addr)
+    nabal = get_native_token_amount(my_addr)
     print("After withdraw, native token's amount in my_addr :{}".format(bal))
     print("After withdraw, token's amount in my_addr :{}".format(nabal))
 
@@ -176,30 +173,39 @@ def testWithdrawLiquidity2():
     lp_Amount = get_lp_token(my_addr)
     print("lp_amount (before withdraw2) :{}".format(lp_Amount))
 
-    bal, nabal = get_amount(pair_addr, token_addr)
-    print("Before withdraw, PAIR token's amount:{}".format(bal))
-    print("Before withdraw, PAIR native token's amount:{}".format(nabal))
+    bal = get_token_amount(pair_addr)
+    nabal = get_native_token_amount(pair_addr)
+    print("Before withdraw, PAIR's token amount:{}".format(bal))
+    print("Before withdraw, PAIR's native token amount:{}".format(nabal))
 
-    bal, nabal = get_amount(my_addr, token_addr)
-    
-    print("Before withdraw, token's amount:{}".format(bal))
-    print("Before withdraw, native token's amount:{}".format(nabal))
+    bal = get_token_amount(my_addr)
+    nabal = get_native_token_amount(my_addr)    
+    print("Before withdraw, my token amount:{}".format(bal))
+    print("Before withdraw, my native token amount:{}".format(nabal))
 
     #withdraw_liquidity (token)
-    msg = json.dumps({"withdraw_liquidity": {"sender": my_addr, "amount": 1000}}).encode()
-    m.execute(pair_addr, msg, [("umlg", 1000)])
+    # msg = json.dumps({"withdraw_liquidity": {"sender": lp_addr, "amount": 1000}}).encode()
+    # m.execute(pair_addr, msg, [("umlg", 1000)])
+    remove = to_binary(json.dumps({"withdraw_liquidity": {}}))
+    #msg = json.dumps({"send": {"contract": pair_addr, "amount": "1000", "msg": remove}}).encode()
+    msg = json.dumps({"send": {"sender": my_addr, "msg" : remove, "amount": 1000}}).encode()
+
+    m.execute(lp_addr, msg, [("umlg", 0)])
+    
     lp_Amount = get_lp_token(my_addr)
     print("lp_amount (after withdraw2) :{}".format(lp_Amount))
 
-    bal, nabal = get_amount(pair_addr, token_addr)
-    print("Before withdraw, PAIR token's amount:{}".format(bal))
-    print("Before withdraw, PAIR native token's amount:{}".format(nabal))
+    bal = get_token_amount(pair_addr)
+    nabal = get_native_token_amount(pair_addr)
+    print("After withdraw, PAIR's token amount:{}".format(bal))
+    print("After withdraw, PAIR's native token amount:{}".format(nabal))
 
-    bal, nabal = get_amount(my_addr, token_addr)
-    print("After withdraw, token's amount:{}".format(bal))
-    print("After withdraw, native token's amount:{}".format(nabal))
+    bal = get_token_amount(my_addr)
+    nabal = get_native_token_amount(my_addr)
+    print("After withdraw, my token amount:{}".format(bal))
+    print("After withdraw, my native token amount:{}".format(nabal))
 
-
+#liquidity + swap test
 def testWithdrawLiquidity3():
     m.cheat_message_sender(my_addr)
     native_to_token = json.dumps(
@@ -260,24 +266,23 @@ def testWithdrawLiquidity3():
     bal_umlg2 = bytearray(m.bank_query(msg1)).decode()
 
     bal_token = int(
-        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg2)))[
-            "balance"]
+        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg2)))["balance"]
     )
 
     for i in range(1):
+        bal = get_token_amount(my_addr)
+        nabal = get_native_token_amount(my_addr)
         # similar to [ask_amount = (ask_pool - cp / (offer_pool + offer_amount)) * (1 - commission_rate)]
         #res = m.execute(pair_addr, native_to_token, [("umlg", 3000)])
         res = m.execute(token_addr, token_to_native, [])
         print(res.get_log())
 
     bal2 = int(
-        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))[
-            "balance"]
+        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"]
     )
 
     bal2_token = int(
-        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg2)))[
-            "balance"]
+        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg2)))["balance"]
     )
 
     bal_umlg = bytearray(m.bank_query(msg2)).decode()
@@ -329,11 +334,28 @@ def testSwap1():
 
     m.execute(pair_addr, msg2, [("umlg", 80000)])
 
+    balance_query_msg = json.dumps({"balance": {"address": my_addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    print("(Before swap) my token amount: {}".format(bal1))
+
+    msg = json.dumps({"balance": {"address": my_addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    print("(Before swap) my native token amount: {}".format(bal_umlg))
+
+    balance_query_msg = json.dumps({"balance": {"address": pair_addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    print("(Before swap) PAIR's token amount: {}".format(bal1))
+
+    msg = json.dumps({"balance": {"address": pair_addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    print("(Before swap) PAIR's native token amount: {}".format(bal_umlg))
+
+    #swap token to native token
     token_to_native = json.dumps(
         {
             "send": {
                 "contract": pair_addr,
-                "amount": "300",
+                "amount": "3000",
                 "msg": to_binary(
                     {
                         "swap": {
@@ -346,27 +368,64 @@ def testSwap1():
             }
         }
     ).encode()
-    balance_query_msg = json.dumps({"balance": {"address": my_addr}}).encode()
+
+    # similar to [ask_amount = (ask_pool - cp / (offer_pool + offer_amount)) * (1 - commission_rate)]
     m.execute(token_addr, token_to_native, [])
 
-    bal1 = int(
-        json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))[
-            "balance"]
-    )
+    balance_query_msg = json.dumps({"balance": {"address": my_addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    print("(After swap) my token amount: {}".format(bal1))
 
-    poolAmountX = (60000 + 3000) * 1e6
-    poolAmountY = (80000 + 4000) * 1e6
+    msg = json.dumps({"balance": {"address": my_addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    print("(After swap) my native token amount: {}".format(bal_umlg))
 
-    expectedOutput = -(int(poolAmountX * poolAmountY) /
-                       int(poolAmountX + 300*1e6)) + int(poolAmountY)
-    expectedOutput = expectedOutput * 999 / 1000
-    print(expectedOutput)
+    balance_query_msg = json.dumps({"balance": {"address": pair_addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    print("(After swap) PAIR's token amount: {}".format(bal1))
 
+    msg = json.dumps({"balance": {"address": pair_addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    print("(After swap) PAIR's native token amount: {}".format(bal_umlg))
+
+    native_to_token = json.dumps(
+        {
+            "swap": {
+                "offer_asset": {
+                    "info": {"native_token": {"denom": "umlg"}},
+                    "amount": "3000",
+                },
+                "belief_price": None,
+                "max_spread": None,
+                "to": None,
+            }
+        }).encode()
+
+    # similar to [ask_amount = (ask_pool - cp / (offer_pool + offer_amount)) * (1 - commission_rate)]
+    m.execute(pair_addr, native_to_token,[("umlg", 3000)])
+
+    balance_query_msg = json.dumps({"balance": {"address": my_addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    print("(After two swap) my token amount: {}".format(bal1))
+
+    msg = json.dumps({"balance": {"address": my_addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    print("(After two swap) my native token amount: {}".format(bal_umlg))
+
+    balance_query_msg = json.dumps({"balance": {"address": pair_addr}}).encode()
+    bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
+    print("(After two swap) PAIR's token amount: {}".format(bal1))
+
+    msg = json.dumps({"balance": {"address": pair_addr,"denom": "umlg",}}).encode()
+    bal_umlg = bytearray(m.bank_query(msg)).decode()
+    print("(After two swap) PAIR's native token amount: {}".format(bal_umlg))
+
+    
 
 if __name__ == "__main__":
-    testAddLiquidity1()
-    testWithdrawLiquidity1()
-    # testAddLiquidity3()
-    #testWithdrawLiquidity2()
-    # testWithdrawLiquidity3()
-    # testSwap1()
+    testAddLiquidity1() ##Ok
+    #testWithdrawLiquidity1()
+    #testAddLiquidity3()
+    testWithdrawLiquidity2()
+    #testWithdrawLiquidity3()
+    #testSwap1() ##Ok
