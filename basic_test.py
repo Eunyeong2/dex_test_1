@@ -146,11 +146,11 @@ def testWithdrawLiquidity1():
     print("Before withdraw, my native token amount :{}".format(nabal))
 
     #withdraw token liquidity
-    remove = to_binary(json.dumps({"withdraw_liquidity": {}}))
+    remove = to_binary({"withdraw_liquidity": {}})
     msg = json.dumps(
         {"send": {"contract": pair_addr, "amount": "1000", "msg": remove}}).encode()
-    m.execute(lp_addr, msg, [("umlg", 0)])
-    
+    m.execute(lp_addr, msg, [])
+
     after_lp_Amount = get_lp_token(my_addr)
     print("Lptoken amount (after withdraw) : {}".format(after_lp_Amount))
     
@@ -186,9 +186,9 @@ def testWithdrawLiquidity2():
     #withdraw_liquidity (token)
     # msg = json.dumps({"withdraw_liquidity": {"sender": lp_addr, "amount": 1000}}).encode()
     # m.execute(pair_addr, msg, [("umlg", 1000)])
-    remove = to_binary(json.dumps({"withdraw_liquidity": {}}))
+    remove = to_binary({"withdraw_liquidity": {}})
     #msg = json.dumps({"send": {"contract": pair_addr, "amount": "1000", "msg": remove}}).encode()
-    msg = json.dumps({"send": {"sender": my_addr, "msg" : remove, "amount": 1000}}).encode()
+    msg = json.dumps({"send": {"contract": pair_addr, "msg" : remove, "amount": "1000"}}).encode()
 
     m.execute(lp_addr, msg, [("umlg", 0)])
     
@@ -424,8 +424,8 @@ def testSwap1():
 
 if __name__ == "__main__":
     testAddLiquidity1() ##Ok
-    #testWithdrawLiquidity1()
+    testWithdrawLiquidity1()
     #testAddLiquidity3()
-    testWithdrawLiquidity2()
+    #testWithdrawLiquidity2()
     #testWithdrawLiquidity3()
     #testSwap1() ##Ok
