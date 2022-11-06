@@ -15,6 +15,7 @@ def decode_vec(v):
 
 
 my_addr = "wasm1w20htrmu36l2lvrxf2an54h2gwlwr3ydz50exd"
+test_addr = "wasm1asdf"
 factory_id = 2385
 token_id = 2386
 pair_id = 2387
@@ -103,30 +104,64 @@ def testAddLiquidity1():
     third_lp_Amount = get_lp_token(my_addr) - first_lp_Amount - second_lp_Amount
     assert third_lp_Amount == first_lp_Amount
 
-# # provide different token test
-# def testAddLiquidity3():
-#     ttoken = "wasmd1asdf"
-#     m.cheat_message_sender(my_addr)
 
-#     msg = json.dumps({"provide_liquidity": {
-#         "assets": [
-#             {
-#                 "info": { "token": { "contract_addr": ttoken } },
-#                 "amount": "100"
-#             },
-#             {
-#                 "info": { "native_token": { "denom": "umlg" } },
-#                 "amount": "100"
-#             }
-#         ],
-#         "slippage_tolerance": None,
-#         "receiver": None
-#     }}).encode()
-#     m.execute(pair_addr, msg, [("umlg", 100)])
-#     print(m.get_log)
-#     lp_Amount = get_lp_token(my_addr)
-#     print("testAddLiquidity3: {}".format(lp_Amount))
+def testAddLiquidity2():
+    m.cheat_message_sender(test_addr)
 
+    msg = json.dumps({"provide_liquidity": {
+        "assets": [
+            {
+                "info": {"token": {"contract_addr": token_addr}},
+                "amount": "1000"
+            },
+            {
+                "info": {"native_token": {"denom": "umlg"}},
+                "amount": "1000"
+            }
+        ],
+        "slippage_tolerance": None,
+        "receiver": None
+    }}).encode()
+
+    m.execute(pair_addr, msg, [("umlg", 1000)])
+    first_lp_Amount = get_lp_token(my_addr)
+
+    msg2 = json.dumps({"provide_liquidity": {
+        "assets": [
+            {
+                "info": {"token": {"contract_addr": token_addr}},
+                "amount": "2000"
+            },
+            {
+                "info": {"native_token": {"denom": "umlg"}},
+                "amount": "2000"
+            }
+        ],
+        "slippage_tolerance": None,
+        "receiver": None
+    }}).encode()
+
+    m.execute(pair_addr, msg2, [("umlg", 2000)])
+    second_lp_Amount = get_lp_token(my_addr) - first_lp_Amount
+    assert second_lp_Amount == first_lp_Amount*2
+
+    msg = json.dumps({"provide_liquidity": {
+        "assets": [
+            {
+                "info": {"token": {"contract_addr": token_addr}},
+                "amount": "1000"
+            },
+            {
+                "info": {"native_token": {"denom": "umlg"}},
+                "amount": "1000"
+            }
+        ],
+        "slippage_tolerance": None,
+        "receiver": None
+    }}).encode()
+    m.execute(pair_addr, msg, [("umlg", 1000)])
+    third_lp_Amount = get_lp_token(my_addr) - first_lp_Amount - second_lp_Amount
+    assert third_lp_Amount == first_lp_Amount
 
 # withdraw token
 def testWithdrawLiquidity1():
@@ -148,7 +183,7 @@ def testWithdrawLiquidity1():
     #withdraw liquidity
     remove = to_binary({"withdraw_liquidity": {}})
     msg = json.dumps(
-        {"send": {"contract": pair_addr, "amount": "1000", "msg": remove}}).encode()
+        {"send": {"contract": pair_addr, "amount": 1000, "msg": remove}}).encode()
     m.execute(lp_addr, msg, [])
 
     after_lp_Amount = get_lp_token(my_addr)
@@ -183,8 +218,10 @@ def testWithdrawLiquidity2():
     print("Before withdraw, my native token amount:{}".format(nabal))
 
     #withdraw liquidity
-    remove = to_binary({"withdraw_liquidity": {}})
+    remove = to_binary(json.dumps({"withdraw_liquidity": {}}))
+    print(remove)
     msg = json.dumps({"send": {"contract": pair_addr, "msg" : remove, "amount": "1000"}}).encode()
+    print(msg)
     m.execute(lp_addr, msg, [("umlg", 0)])
     
     lp_Amount = get_lp_token(my_addr)
@@ -393,7 +430,8 @@ def testSwap1():
         }).encode()
 
     # similar to [ask_amount = (ask_pool - cp / (offer_pool + offer_amount)) * (1 - commission_rate)]
-    m.execute(pair_addr, native_to_token,[("umlg", 3000)])
+    res = m.execute(pair_addr, native_to_token,[("umlg", 3000)])
+    print(res.get_log())
 
     balance_query_msg = json.dumps({"balance": {"address": my_addr}}).encode()
     bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
@@ -407,14 +445,13 @@ def testSwap1():
     bal1 = int(json.loads(decode_vec(m.wasm_query(token_addr, balance_query_msg)))["balance"])
     print("(After two swap) PAIR's token amount: {}".format(bal1))
 
-    msg = json.dumps({"balance": {"address": pair_addr,"denom": "umlg",}}).encode()
+    msg = json.dumps({"balance": {"address": pair_addr,"denom": "umlg"}}).encode()
     bal_umlg = bytearray(m.bank_query(msg)).decode()
     print("(After two swap) PAIR's native token amount: {}".format(bal_umlg))
     
 if __name__ == "__main__":
     testAddLiquidity1() ##Ok
-    testWithdrawLiquidity1()
-    #testAddLiquidity3()
-    #testWithdrawLiquidity2()
-    testWithdrawLiquidity3()
-    testSwap1()
+    #testWithdrawLiquidity1()
+    testWithdrawLiquidity2()
+    #testWithdrawLiquidity3()
+    #testSwap1()
